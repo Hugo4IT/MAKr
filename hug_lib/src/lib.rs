@@ -1,16 +1,30 @@
-use std::collections::HashMap;
-use value::HugValue;
+pub use libc;
+pub use paste;
 
+use std::collections::HashMap;
+use value::HugExternalFunction;
+
+pub mod ffi_helpers;
 pub mod value;
+
+pub type ModuleExportsFn = extern "C" fn() -> *mut libc::c_char;
+pub type ModuleDeallocStringFn = unsafe extern "C" fn(string: *mut libc::c_char);
 
 #[macro_export]
 macro_rules! hug_module {
-    ($init:path) => {
-        use hug_lib::HugModule;
+    ($($export:ident),*) => {
+        $crate::paste::paste! {
+            #[no_mangle]
+            extern "C" fn __HUG_MODULE_EXPORTS() -> *const $crate::libc::c_char {
+                std::ffi::CString::new(
+                    stringify!($($export),*)
+                ).unwrap().into_raw()
+            }
 
-        #[no_mangle]
-        extern "C" fn __HUG_MODULE_INIT(module: &mut HugModule) {
-            $init(module);
+            #[no_mangle]
+            unsafe extern "C" fn __HUG_MODULE_DEALLOC_STRING(string: *mut $crate::libc::c_char) {
+                let _ = std::ffi::CString::from_raw(string);
+            }
         }
     };
 }
@@ -27,37 +41,56 @@ macro_rules! unwrap_args {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident(pub usize);
 
-pub struct HugModule<'a> {
-    pub functions: HashMap<Ident, fn(std::vec::IntoIter<HugValue>) -> Option<HugValue>>,
-    idents: &'a mut HashMap<String, Ident>,
-}
+#[macro_export]
+macro_rules! hug_export {
+    {
+        $(#[$meta:meta])*
+        $vis:vis unsafe fn $fn_name:ident ( $($arg_name:ident : $arg_type:ty $(= $arg_default:expr)?),* $(, ...$varargs_name:ident: $varargs_type:ty)?) $(-> $return_type:ty)? $fn_block:block
+    } => {
+        $crate::paste::paste! {
+            mod $fn_name {
+            }
 
-impl<'a> HugModule<'a> {
-    pub fn new(idents: &mut HashMap<String, Ident>) -> HugModule {
-        HugModule {
-            functions: HashMap::new(),
-            idents,
-        }
-    }
+            #[allow(non_snake_case)]
+            $(#[$meta])*
+            unsafe fn [<$fn_name _IMPL>] ( $($arg_name : $arg_type ),* $(, $varargs_name: Vec<$varargs_type>)? ) $(-> $return_type)? $fn_block
 
-    pub fn register_function(
-        &mut self,
-        name: &str,
-        func: fn(std::vec::IntoIter<HugValue>) -> Option<HugValue>,
-    ) {
-        if let Some(id) = self.idents.get(name) {
-            self.functions.insert(*id, func);
-        } else {
-            println!(
-                "The function \"{0}\" was registered before it was defined. \
-                      Define it with \"@export function {0};\"",
-                name
-            );
+            #[no_mangle]
+            $vis unsafe extern "C" fn [<_HUG_EXPORT_ $fn_name>] (args: $crate::ffi_helpers::PackedArgs) -> $crate::ffi_helpers::ReturnValue {
+                let mut args = args.unpack();
+
+                let result = [<$fn_name _IMPL>] (
+                    $(args.arg::<$arg_type>(stringify!($arg_name)) $(.or(Some($arg_default)))? .unwrap()),*
+                    $(, args.collect_remaining::<$varargs_type>())?
+                );
+
+                $crate::ffi_helpers::ReturnValue::pack(result)
+            }
         }
-        assert!(
-            self.idents.contains_key(name),
-            "Define the function \"{}\" first with @export function before registering it!",
-            name
-        );
-    }
+    };
+    {
+        $(#[$meta:meta])*
+        $vis:vis fn $fn_name:ident ( $($arg_name:ident : $arg_type:ty $(= $arg_default:expr)?),* $(, ...$varargs_name:ident: $varargs_type:ty)?) $(-> $return_type:ty)? $fn_block:block
+    } => {
+        $crate::paste::paste! {
+            mod $fn_name {
+            }
+
+            #[allow(non_snake_case)]
+            $(#[$meta])*
+            fn [<$fn_name _IMPL>] ( $($arg_name : $arg_type ),* $(, $varargs_name: Vec<$varargs_type>)? ) $(-> $return_type)? $fn_block
+
+            #[no_mangle]
+            $vis unsafe extern "C" fn [<_HUG_EXPORT_ $fn_name>] (args: $crate::ffi_helpers::PackedArgs) -> $crate::ffi_helpers::ReturnValue {
+                let mut args = args.unpack();
+
+                let result = [<$fn_name _IMPL>] (
+                    $(args.arg::<$arg_type>(stringify!($arg_name)) $(.or(Some($arg_default)))? .unwrap()),*
+                    $(, args.collect_remaining::<$varargs_type>())?
+                );
+
+                $crate::ffi_helpers::ReturnValue::pack(result)
+            }
+        }
+    };
 }

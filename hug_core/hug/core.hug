@@ -1,5 +1,6 @@
 //! Automatically imported into every project, contains basic hug features.
-@extern(location = "target/debug/libhug_core.dylib") module core
+@extern(location = "hug_core") module core
 
-@extern function add
+
 @extern function print
+@extern function add

@@ -8,3 +8,4 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 hug_lib = { path = "../hug_lib" }
+rt-format = "0.3.1"

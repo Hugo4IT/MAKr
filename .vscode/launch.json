@@ -7,16 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'makr_compiler'",
+            "name": "Debug unit tests in library 'hug_lexer'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=makr_compiler"
+                    "--package=hug_lexer"
                 ],
                 "filter": {
-                    "name": "makr_compiler",
+                    "name": "hug_lexer",
                     "kind": "lib"
                 }
             },
@@ -26,16 +26,35 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'makr_lib'",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=hug_lexer"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'hug_lib'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=makr_lib"
+                    "--package=hug_lib"
                 ],
                 "filter": {
-                    "name": "makr_lib",
+                    "name": "hug_lib",
                     "kind": "lib"
                 }
             },
@@ -45,16 +64,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'makr_transpiler'",
+            "name": "Debug unit tests in library 'hug_compiler'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=makr_transpiler"
+                    "--package=hug_compiler"
                 ],
                 "filter": {
-                    "name": "makr_transpiler",
+                    "name": "hug_compiler",
                     "kind": "lib"
                 }
             },
@@ -64,16 +83,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'makr_std'",
+            "name": "Debug unit tests in library 'hug_ast'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=makr_std"
+                    "--package=hug_ast"
                 ],
                 "filter": {
-                    "name": "makr_std",
+                    "name": "hug_ast",
                     "kind": "lib"
                 }
             },
@@ -83,16 +102,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'makr_interpreter'",
+            "name": "Debug unit tests in library 'hug_interpreter'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=makr_interpreter"
+                    "--package=hug_interpreter"
                 ],
                 "filter": {
-                    "name": "makr_interpreter",
+                    "name": "hug_interpreter",
                     "kind": "lib"
                 }
             },
@@ -102,34 +121,53 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'makr_bin'",
+            "name": "Debug unit tests in library 'hug_core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=hug_core"
+                ],
+                "filter": {
+                    "name": "hug_core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'hug'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=makr_bin",
-                    "--package=makr_bin",
+                    "--bin=hug",
+                    "--package=hug"
                 ],
                 "filter": {
-                    "name": "makr_bin",
+                    "name": "hug",
                     "kind": "bin"
                 }
             },
-            "args": ["test/prog.makr"],
+            "args": ["run", "test/prog.hug"],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'makr_bin'",
+            "name": "Debug unit tests in executable 'hug'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=makr_bin",
-                    "--package=makr_bin"
+                    "--bin=hug",
+                    "--package=hug"
                 ],
                 "filter": {
-                    "name": "makr_bin",
+                    "name": "hug",
                     "kind": "bin"
                 }
             },

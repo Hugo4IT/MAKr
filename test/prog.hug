@@ -1,60 +1,22 @@
-let num: Float32 = 7
-let wow, hi = (30, 20)
+let num: Float32 = 4.20
 
-print("This is a number: ", num)
-
+print("This is a number: {}", num)
 
 
+let number_1 = 32
+let number_2 = 50
 
+let result = add(number_1, number_2)
 
-	import std.io;
-
-	fn ui(preon: Preon) {
-		preon.label("Hello, World!")
-		preon.beginRow()
-	}
+print("{} + {} = {}", number_1, number_2, result)
 
 
 
+//let wow, hi = (30, 20)
 
+	//import std.io;
 
-
-
-	
-
-
-
-
-
-
-
-// Python
-
-function printNum(num: Float32):
-	print("Wowie: ", num)
-
-// Lua
-
-function printNum(num: Float32)
-	print("Wowie: ", num)
-end
-
-// JavaScript
-
-function printNum(num: Float32) {
-	print("Wowie: ", num)
-
-	print("hoi")
-}
-
-// MicroScript
-
-let printNum = function(num: Float32)
-	print("Wowie: ", num)
-end
-
-// JavaScript again
-
-let printNum = (num: Float32) => {
-	print("Wowie: ", num)
-}
+	//fn ui(preon: Preon) {
+	//	preon.label("Hello, World!")
+	//	preon.beginRow()
+	//}

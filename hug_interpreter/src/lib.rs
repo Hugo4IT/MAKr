@@ -1,3 +1,3 @@
-use hug_ast::HugTree;
+#![feature(c_variadic)]
 
 pub mod vm;
