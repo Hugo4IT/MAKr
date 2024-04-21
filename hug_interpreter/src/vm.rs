@@ -50,7 +50,7 @@ fn resolve_library(path: String) -> Option<PathBuf> {
 #[derive(Debug)]
 pub struct HugVM {
     paused: bool,
-    pointer: usize,
+    pub pointer: usize,
     tree: HugTree,
     idents: HashMap<String, Ident>,
     variables: Vec<Option<HugValue>>,
