@@ -2,5 +2,5 @@
 @extern(location = "hug_core") module core
 
 
-@extern function print
-@extern function add
+import core.print
+import core.add

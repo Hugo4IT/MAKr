@@ -1,3 +1,4 @@
+use hug_lib::ident_table::IdentTable;
 use parser::{generate_pairs, TokenPair};
 use tokenizer::{Token, TokenKind, Tokenizer};
 
@@ -66,9 +67,12 @@ pub fn lex(program: &str) -> Vec<TokenPair> {
 }
 
 pub fn tokenize(program: &str) -> Vec<Token> {
+    let mut ident_table = IdentTable::new();
+
     let mut buffer = String::new();
     buffer.push_str("import core");
-    Tokenizer::new(program).tokenize()
+
+    Tokenizer::new(&mut ident_table, program).tokenize()
 }
 
 pub fn run_test(program: &str, expected_result: &[(TokenKind, usize)]) {

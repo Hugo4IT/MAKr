@@ -1,60 +1,27 @@
-use std::{
-    collections::HashMap,
-    env::current_dir,
-    ffi::CString,
-    fs::OpenOptions,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{fs::OpenOptions, io::Read};
 
 use hug_ast::HugTree;
 use hug_core::HUG_CORE_SCRIPT;
 use hug_lexer::{parser::generate_pairs, tokenizer::Tokenizer};
 use hug_lib::{
     ffi_helpers::PackedArgs,
+    function::HugFunction,
+    ident_table::IdentTable,
+    module::HugModule,
     value::{HugExternalFunction, HugValue},
-    Ident, ModuleDeallocStringFn, ModuleExportsFn,
+    variables::Variables,
 };
-use libloading::Library;
 
 const INVALID_MODULE_ERROR: &str = "This module does not have the required functions, add one with hug_module! or contact the module's developer.";
-
-fn target_dir() -> Option<PathBuf> {
-    #[cfg(debug_assertions)]
-    const BUILD_TYPE: &str = "debug";
-    #[cfg(not(debug_assertions))]
-    const BUILD_TYPE: &str = "release";
-
-    std::env::var("CARGO_TARGET_DIR")
-        .ok()
-        .map(|s| Path::new(&s).to_path_buf())
-        .or_else(|| current_dir().ok().map(|dir| dir.join("target")))
-        .map(|path| path.join(BUILD_TYPE))
-}
-
-fn resolve_library(path: String) -> Option<PathBuf> {
-    let file_name = libloading::library_filename(path);
-
-    if let Some(target_dir) = target_dir() {
-        let path = target_dir.join(file_name);
-        if path.exists() {
-            return Some(path);
-        }
-    } else {
-        eprintln!("Warning: cargo target dir was not found");
-    }
-
-    None
-}
 
 #[derive(Debug)]
 pub struct HugVM {
     paused: bool,
     pub pointer: usize,
     tree: HugTree,
-    idents: HashMap<String, Ident>,
-    variables: Vec<Option<HugValue>>,
-    external_libraries: Vec<Library>,
+    idents: IdentTable,
+    variables: Variables,
+    // external_libraries: Vec<Library>,
     // external_functions: Vec<Symbol<'lib>>,
 }
 
@@ -64,9 +31,8 @@ impl HugVM {
             paused: false,
             pointer: 0,
             tree: HugTree::new(),
-            idents: HashMap::new(),
-            variables: Vec::new(),
-            external_libraries: Vec::new(),
+            idents: IdentTable::new(),
+            variables: Variables::new(),
         };
 
         vm.load_script(HUG_CORE_SCRIPT);
@@ -100,9 +66,8 @@ impl HugVM {
         #[cfg(debug_assertions)]
         println!("Loading script:\n> {}", program);
 
-        let mut tokenizer = Tokenizer::with_idents(self.idents.clone(), program);
+        let mut tokenizer = Tokenizer::new(&mut self.idents, program);
         let tokens = tokenizer.tokenize();
-        self.idents = tokenizer.idents;
 
         let pairs = generate_pairs(program, tokens);
         let t = HugTree::from_token_pairs(pairs);
@@ -110,25 +75,6 @@ impl HugVM {
     }
 
     pub fn run(&mut self) {
-        #[cfg(debug_assertions)]
-        {
-            println!("HugTree: {}", self.tree);
-            println!("Identifiers: {}", {
-                let mut buffer = String::new();
-                for (key, value) in self.idents.iter() {
-                    buffer.push_str(&format!("\n  {:?}: \"{}\",", value, key));
-                }
-                buffer
-            });
-            println!("Memory: {}", {
-                let mut buffer = String::new();
-                for (i, value) in self.variables.iter().enumerate() {
-                    buffer.push_str(&format!("\n  {}: \"{:?}\",", i, value.clone()));
-                }
-                buffer
-            })
-        }
-
         while self.pointer < self.tree.entries.len() {
             let instruction = self.tree.entries.get(self.pointer).unwrap().clone();
 
@@ -137,78 +83,57 @@ impl HugVM {
 
             match instruction {
                 hug_ast::HugTreeEntry::ModuleDefinition { module } => todo!(),
-                hug_ast::HugTreeEntry::ExternalModuleDefinition { module, location } => unsafe {
-                    let library =
-                        libloading::Library::new(resolve_library(location).unwrap()).unwrap();
+                hug_ast::HugTreeEntry::ExternalModuleDefinition {
+                    module,
+                    ref location,
+                } => {
+                    self.variables
+                        .set(module, HugValue::Module(HugModule::external(location)));
+                }
+                hug_ast::HugTreeEntry::Import { path } => {
+                    // if path.len() == 2 {
+                    //     let module = path[0];
+                    //     let function = path[1];
 
-                    let module_exports: libloading::Symbol<ModuleExportsFn> = library
-                        .get(b"__HUG_MODULE_EXPORTS")
-                        .expect(INVALID_MODULE_ERROR);
+                    //     let symbol: libloading::Symbol<HugExternalFunction> = library
+                    //         .get(format!("_HUG_EXPORT_{}", self.idents.name(function)).as_bytes())
+                    //         .unwrap();
 
-                    let module_dealloc_string: libloading::Symbol<ModuleDeallocStringFn> = library
-                        .get(b"__HUG_MODULE_DEALLOC_STRING")
-                        .expect(INVALID_MODULE_ERROR);
+                    //     self.set_variable(function, HugValue::ExternalFunction(*symbol));
 
-                    let module_exports_cstring = CString::from_raw(module_exports());
-                    let module_exports = module_exports_cstring.to_str().unwrap().to_owned();
-
-                    module_dealloc_string(module_exports_cstring.into_raw());
-
-                    for export in module_exports.split(',') {
-                        let export = export.trim();
-
-                        let Some(id) = self.idents.get(export) else {
-                            eprintln!("Unable to resolve ffi symbol: {export}");
-
-                            continue;
-                        };
-
-                        let symbol: libloading::Symbol<HugExternalFunction> = library
-                            .get(format!("_HUG_EXPORT_{export}").as_bytes())
-                            .unwrap();
-
-                        self.set_variable(*id, HugValue::ExternalFunction(*symbol));
-
-                        #[cfg(debug_assertions)]
-                        println!("Resolved symbol '{export}'");
-                    }
-
-                    self.external_libraries.push(library);
-
-                    // let mut module = HugModule::new(&mut self.idents);
-                    // init_func(&mut module);
-
-                    // let HugModule { functions, .. } = module;
-
-                    // for (id, fun) in functions {
-                    //     self.set_variable(id, HugValue::ExternalFunction(fun));
+                    //     #[cfg(debug_assertions)]
+                    //     println!("Resolved symbol '{export}'");
+                    // } else {
+                    //     panic!("Unrecognized import of length 2");
                     // }
-                },
+                }
                 hug_ast::HugTreeEntry::VariableDefinition { variable, value } => {
-                    self.set_variable(variable, value.clone());
+                    self.variables.set(variable, value.clone());
                 }
                 hug_ast::HugTreeEntry::FunctionCall { function, args } => {
-                    match self.get_variable(function).unwrap() {
-                        HugValue::ExternalFunction(f) => {
-                            let args = args
-                                .iter()
-                                .map(|a| {
-                                    Some(match a {
-                                        hug_ast::HugTreeFunctionCallArg::Variable(v) => {
-                                            self.get_variable(*v).unwrap().to_owned()
-                                        }
-                                        hug_ast::HugTreeFunctionCallArg::Value(v) => v.to_owned(),
+                    match self.variables.get(function).unwrap() {
+                        HugValue::Function(f) => match f {
+                            HugFunction::Hug { address } => self.pointer = *address,
+                            HugFunction::External { function_pointer } => {
+                                let args = args
+                                    .iter()
+                                    .map(|a| {
+                                        Some(match a {
+                                            hug_ast::HugTreeFunctionCallArg::Variable(v) => {
+                                                self.variables.get(*v).unwrap().to_owned()
+                                            }
+                                            hug_ast::HugTreeFunctionCallArg::Value(v) => {
+                                                v.to_owned()
+                                            }
+                                        })
                                     })
-                                })
-                                .collect::<Vec<_>>();
+                                    .collect::<Vec<_>>();
 
-                            unsafe {
-                                f(PackedArgs::pack(&args));
+                                unsafe {
+                                    function_pointer(PackedArgs::pack(&args));
+                                }
                             }
-                        }
-                        HugValue::Function(l) => {
-                            self.pointer = *l;
-                        }
+                        },
                         _ => panic!("Not a function! {:?}", function),
                     }
                 }
@@ -216,36 +141,5 @@ impl HugVM {
             }
             self.next();
         }
-    }
-
-    #[inline]
-    pub fn enforce_variables_len(&mut self, size: usize) {
-        if self.variables.len() < size + 1 {
-            self.variables
-                .extend((0..(size - self.variables.len() + 1)).map(|_| None));
-        }
-    }
-
-    #[inline]
-    pub fn get_variable(&self, at: Ident) -> Option<&HugValue> {
-        self.variables.get(at.0).and_then(|h| h.as_ref())
-    }
-
-    #[inline]
-    pub fn get_variable_mut(&mut self, at: Ident) -> Option<&mut HugValue> {
-        self.enforce_variables_len(at.0);
-        self.variables.get_mut(at.0).and_then(|h| h.as_mut())
-    }
-
-    #[inline]
-    pub fn remove_variable(&mut self, at: Ident) -> Option<HugValue> {
-        self.enforce_variables_len(at.0);
-        self.variables.get_mut(at.0).unwrap().take()
-    }
-
-    #[inline]
-    pub fn set_variable(&mut self, at: Ident, value: HugValue) {
-        self.enforce_variables_len(at.0);
-        let _ = self.variables.get_mut(at.0).unwrap().insert(value);
     }
 }

@@ -35,6 +35,9 @@ pub enum HugTreeEntry {
         function: Ident,
         args: Vec<HugTreeFunctionCallArg>,
     },
+    Import {
+        path: Vec<Ident>,
+    },
 }
 
 #[derive(Debug)]

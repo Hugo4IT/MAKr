@@ -10,4 +10,4 @@ hug_lib = { path = "../hug_lib" }
 hug_ast = { path = "../hug_ast" }
 hug_core = { path = "../hug_core" }
 hug_lexer = { path = "../hug_lexer" }
-libloading = "0.7"
+libloading = "0.8.3"

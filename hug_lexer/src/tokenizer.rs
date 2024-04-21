@@ -1,6 +1,6 @@
-use std::{collections::HashMap, str::Chars};
+use std::str::Chars;
 
-use hug_lib::Ident;
+use hug_lib::{ident_table::IdentTable, Ident};
 
 type TokenList = Vec<Token>;
 
@@ -176,19 +176,11 @@ impl TokenKind {
 pub struct Tokenizer<'a> {
     pub len: usize,
     pub chars: Chars<'a>,
-    pub idents: HashMap<String, Ident>,
+    pub idents: &'a mut IdentTable,
 }
 
 impl<'a> Tokenizer<'a> {
-    pub fn new(program: &'a str) -> Self {
-        Self {
-            len: program.len(),
-            chars: program.chars(),
-            idents: HashMap::new(),
-        }
-    }
-
-    pub fn with_idents(idents: HashMap<String, Ident>, program: &'a str) -> Self {
+    pub fn new(idents: &'a mut IdentTable, program: &'a str) -> Self {
         Self {
             len: program.len(),
             chars: program.chars(),
@@ -353,13 +345,7 @@ impl<'a> Tokenizer<'a> {
                     }
                 }
 
-                if let Some(id) = self.idents.get(other) {
-                    AnnotationKind::Other(*id)
-                } else {
-                    let id = self.idents.values().len();
-                    self.idents.insert(other.to_string(), Ident(id));
-                    AnnotationKind::Other(Ident(id))
-                }
+                AnnotationKind::Other(self.idents.ident(other))
             }
         };
 
@@ -463,13 +449,7 @@ impl<'a> Tokenizer<'a> {
                     }
                 }
 
-                if let Some(id) = self.idents.get(other) {
-                    return TokenKind::Identifier(*id);
-                }
-
-                let id = self.idents.values().len();
-                self.idents.insert(other.to_string(), Ident(id));
-                TokenKind::Identifier(Ident(id))
+                TokenKind::Identifier(self.idents.ident(other))
             }
         }
     }

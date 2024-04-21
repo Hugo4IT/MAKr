@@ -7,3 +7,4 @@ edition = "2021"
 [dependencies]
 paste = "1.0.14"
 libc = "0.2.153"
+libloading = "0.8.3"

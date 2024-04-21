@@ -1,11 +1,9 @@
 use core::fmt;
 
-use hug_lib::{hug_export, hug_module, value::HugValue};
+use hug_lib::{hug_export, value::HugValue};
 use rt_format::{Format, FormatArgument, NoNamedArguments, ParsedFormat};
 
 pub const HUG_CORE_SCRIPT: &str = include_str!("../hug/core.hug");
-
-hug_module!(add, print);
 
 hug_export! {
     fn add(left: i32, right: i32) -> i32 {
@@ -52,30 +50,14 @@ impl<'a> FormatArgument for &'a WrappedHugValue {
                 specifier.format,
                 Format::Display | Format::Debug | Format::LowerExp | Format::UpperExp
             ),
-            HugValue::String(_) | HugValue::Function(_) | HugValue::ExternalFunction(_) => {
+            HugValue::String(_) | HugValue::Function(_) | HugValue::Module(_) => {
                 matches!(specifier.format, Format::Display | Format::Debug)
             }
         }
     }
 
     fn fmt_display(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.0 {
-            HugValue::Int8(v) => fmt::Display::fmt(&v, f),
-            HugValue::Int16(v) => fmt::Display::fmt(&v, f),
-            HugValue::Int32(v) => fmt::Display::fmt(&v, f),
-            HugValue::Int64(v) => fmt::Display::fmt(&v, f),
-            HugValue::Int128(v) => fmt::Display::fmt(&v, f),
-            HugValue::UInt8(v) => fmt::Display::fmt(&v, f),
-            HugValue::UInt16(v) => fmt::Display::fmt(&v, f),
-            HugValue::UInt32(v) => fmt::Display::fmt(&v, f),
-            HugValue::UInt64(v) => fmt::Display::fmt(&v, f),
-            HugValue::UInt128(v) => fmt::Display::fmt(&v, f),
-            HugValue::Float32(v) => fmt::Display::fmt(&v, f),
-            HugValue::Float64(v) => fmt::Display::fmt(&v, f),
-            HugValue::String(ref v) => fmt::Display::fmt(v, f),
-            HugValue::Function(v) => f.write_fmt(format_args!("<Function 0x{v:#X}>")),
-            HugValue::ExternalFunction(_) => f.write_str("<ExternalFunction>"),
-        }
+        write!(f, "{}", self.0)
     }
 
     fn fmt_debug(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -93,8 +75,8 @@ impl<'a> FormatArgument for &'a WrappedHugValue {
             HugValue::Float32(v) => fmt::Debug::fmt(&v, f),
             HugValue::Float64(v) => fmt::Debug::fmt(&v, f),
             HugValue::String(ref v) => fmt::Debug::fmt(v, f),
-            HugValue::Function(v) => f.write_fmt(format_args!("<Function 0x{v:#X}>")),
-            HugValue::ExternalFunction(_) => f.write_str("<ExternalFunction>"),
+            HugValue::Function(ref v) => write!(f, "<Function {v:?}>"),
+            HugValue::Module(ref v) => write!(f, "<Module {v:?}>"),
         }
     }
 

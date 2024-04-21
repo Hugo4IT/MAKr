@@ -1,51 +1,17 @@
 use std::{
+    fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
     str::FromStr,
 };
 
-use crate::ffi_helpers::{ExportDescriptor, PackedArgs, ReturnValue};
+use crate::{
+    ffi_helpers::{ExportDescriptor, PackedArgs, ReturnValue},
+    function::HugFunction,
+    module::HugModule,
+};
 
 pub type HugExternalFunction = unsafe extern "C" fn(args: PackedArgs) -> ReturnValue;
 pub type HugExternalFunctionDescriptor = unsafe extern "C" fn() -> ExportDescriptor;
-
-// macro_rules! gen_impls_for_HugValue {
-//     ($hug_name:ident, $rust_type:ty) => {
-//         impl FromHugValue for $rust_type {
-//             fn from_hug_value(value: HugValue) -> Option<$rust_type> {
-//                 if let HugValue::$hug_name(v) = value {
-//                     Some(v)
-//                 } else {
-//                     None
-//                 }
-//             }
-//         }
-
-//         impl From<$rust_type> for HugValue {
-//             fn from(input: $rust_type) -> HugValue {
-//                 HugValue::$hug_name(input)
-//             }
-//         }
-//     };
-// }
-
-// pub trait FromHugValue: Sized {
-//     fn from_hug_value(value: HugValue) -> Option<Self>;
-// }
-// gen_impls_for_HugValue!(Int8, i8);
-// gen_impls_for_HugValue!(Int16, i16);
-// gen_impls_for_HugValue!(Int32, i32);
-// gen_impls_for_HugValue!(Int64, i64);
-// gen_impls_for_HugValue!(Int128, i128);
-// gen_impls_for_HugValue!(UInt8, u8);
-// gen_impls_for_HugValue!(UInt16, u16);
-// gen_impls_for_HugValue!(UInt32, u32);
-// gen_impls_for_HugValue!(UInt64, u64);
-// gen_impls_for_HugValue!(UInt128, u128);
-// gen_impls_for_HugValue!(Float32, f32);
-// gen_impls_for_HugValue!(Float64, f64);
-// gen_impls_for_HugValue!(String, String);
-// gen_impls_for_HugValue!(Function, usize);
-// gen_impls_for_HugValue!(ExternalFunction, HugExternalFunction);
 
 #[derive(Debug, Clone)]
 pub enum HugValue {
@@ -62,34 +28,28 @@ pub enum HugValue {
     Float32(f32),
     Float64(f64),
     String(String),
-    Function(usize), // usize = pointer to instruction
-    ExternalFunction(HugExternalFunction),
+    Function(HugFunction),
+    Module(HugModule),
 }
 
-impl HugValue {
-    // pub fn assert<T: FromHugValue>(&self) -> Option<T> {
-    //     T::from_hug_value(self.clone())
-    // }
-}
-
-impl ToString for HugValue {
-    fn to_string(&self) -> String {
+impl Display for HugValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HugValue::Int8(v) => v.to_string(),
-            HugValue::Int16(v) => v.to_string(),
-            HugValue::Int32(v) => v.to_string(),
-            HugValue::Int64(v) => v.to_string(),
-            HugValue::Int128(v) => v.to_string(),
-            HugValue::UInt8(v) => v.to_string(),
-            HugValue::UInt16(v) => v.to_string(),
-            HugValue::UInt32(v) => v.to_string(),
-            HugValue::UInt64(v) => v.to_string(),
-            HugValue::UInt128(v) => v.to_string(),
-            HugValue::Float32(v) => v.to_string(),
-            HugValue::Float64(v) => v.to_string(),
-            HugValue::String(v) => v.clone(),
-            HugValue::Function(v) => format!("<Function [0x{:08x}]>", *v),
-            HugValue::ExternalFunction(v) => format!("<ExternalFunction [{:?}]>", v),
+            HugValue::Int8(v) => write!(f, "{}", v),
+            HugValue::Int16(v) => write!(f, "{}", v),
+            HugValue::Int32(v) => write!(f, "{}", v),
+            HugValue::Int64(v) => write!(f, "{}", v),
+            HugValue::Int128(v) => write!(f, "{}", v),
+            HugValue::UInt8(v) => write!(f, "{}", v),
+            HugValue::UInt16(v) => write!(f, "{}", v),
+            HugValue::UInt32(v) => write!(f, "{}", v),
+            HugValue::UInt64(v) => write!(f, "{}", v),
+            HugValue::UInt128(v) => write!(f, "{}", v),
+            HugValue::Float32(v) => write!(f, "{}", v),
+            HugValue::Float64(v) => write!(f, "{}", v),
+            HugValue::String(v) => write!(f, "{}", v),
+            HugValue::Function(v) => write!(f, "<Function {:?}>", v),
+            HugValue::Module(v) => write!(f, "<Module {:?}>", *v),
         }
     }
 }
