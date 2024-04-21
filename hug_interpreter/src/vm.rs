@@ -91,21 +91,19 @@ impl HugVM {
                         .set(module, HugValue::Module(HugModule::external(location)));
                 }
                 hug_ast::HugTreeEntry::Import { path } => {
-                    // if path.len() == 2 {
-                    //     let module = path[0];
-                    //     let function = path[1];
+                    if path.len() <= 1 {
+                        panic!("Invalid import.");
+                    }
 
-                    //     let symbol: libloading::Symbol<HugExternalFunction> = library
-                    //         .get(format!("_HUG_EXPORT_{}", self.idents.name(function)).as_bytes())
-                    //         .unwrap();
+                    match self.variables.get_mut(path[0]) {
+                        Some(HugValue::Module(module)) => {
+                            let ident = path.last().cloned().unwrap();
+                            let variable = module.import(&self.idents, &path[1..]);
 
-                    //     self.set_variable(function, HugValue::ExternalFunction(*symbol));
-
-                    //     #[cfg(debug_assertions)]
-                    //     println!("Resolved symbol '{export}'");
-                    // } else {
-                    //     panic!("Unrecognized import of length 2");
-                    // }
+                            self.variables.set(ident, variable);
+                        }
+                        _ => panic!("Invalid import."),
+                    }
                 }
                 hug_ast::HugTreeEntry::VariableDefinition { variable, value } => {
                     self.variables.set(variable, value.clone());

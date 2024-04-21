@@ -2,5 +2,5 @@
 @extern(location = "hug_core") module core
 
 
-import core.print
-import core.add
+use core.print
+use core.add

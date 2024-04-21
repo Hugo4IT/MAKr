@@ -4,7 +4,13 @@ use std::{
     sync::Arc,
 };
 
-use crate::{ident_table::IdentTable, variables::Variables};
+use crate::{
+    function::HugFunction,
+    ident_table::IdentTable,
+    value::{HugExternalFunction, HugValue},
+    variables::Variables,
+    Ident,
+};
 use libloading::Library;
 
 fn target_dir() -> Option<PathBuf> {
@@ -37,7 +43,6 @@ fn resolve_library(path: &str) -> Option<PathBuf> {
 
 #[derive(Debug, Clone)]
 pub struct HugModule {
-    idents: IdentTable,
     variables: Variables,
     library: Option<Arc<Library>>,
 }
@@ -46,13 +51,50 @@ impl HugModule {
     pub fn external(location: &str) -> Self {
         let library = unsafe { Library::new(resolve_library(location).unwrap()).unwrap() };
 
-        let idents = IdentTable::new();
         let variables = Variables::new();
 
         Self {
-            idents,
             variables,
             library: Some(Arc::new(library)),
+        }
+    }
+
+    pub fn import(&mut self, ident_table: &IdentTable, path: &[Ident]) -> HugValue {
+        if path.is_empty() {
+            panic!("Invalid import");
+        }
+
+        if path.len() != 1 {
+            match self.variables.get_mut(path[0]) {
+                Some(HugValue::Module(module)) => return module.import(ident_table, &path[1..]),
+                _ => panic!("Invalid import"),
+            }
+        }
+
+        let ident = path[0];
+
+        if let Some(variable) = self.variables.get(ident) {
+            eprintln!("warning: duplicate import.");
+
+            return variable.clone();
+        }
+
+        if let Some(library) = self.library.as_ref() {
+            let symbol: libloading::Symbol<HugExternalFunction> = unsafe {
+                library
+                    .get(format!("_HUG_EXPORT_{}", ident_table.name(ident)).as_bytes())
+                    .unwrap()
+            };
+
+            let function = HugValue::Function(HugFunction::External {
+                function_pointer: *symbol,
+            });
+
+            self.variables.set(ident, function.to_owned());
+
+            function
+        } else {
+            todo!()
         }
     }
 }
