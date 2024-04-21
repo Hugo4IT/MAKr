@@ -4,3 +4,4 @@
 
 use core.print
 use core.add
+use core.sum

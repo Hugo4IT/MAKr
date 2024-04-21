@@ -12,6 +12,12 @@ hug_export! {
 }
 
 hug_export! {
+    fn sum(single: i32, ...others: i32) -> i32 {
+        single + others.iter().sum::<i32>()
+    }
+}
+
+hug_export! {
     fn print(fmt: &str, ...args: &HugValue) {
         if args.is_empty() {
             println!("{fmt}");
@@ -50,7 +56,7 @@ impl<'a> FormatArgument for &'a WrappedHugValue {
                 specifier.format,
                 Format::Display | Format::Debug | Format::LowerExp | Format::UpperExp
             ),
-            HugValue::String(_) | HugValue::Function(_) | HugValue::Module(_) => {
+            HugValue::String(_) | HugValue::Function(_) | HugValue::Module(_) | HugValue::Void => {
                 matches!(specifier.format, Format::Display | Format::Debug)
             }
         }
@@ -77,6 +83,7 @@ impl<'a> FormatArgument for &'a WrappedHugValue {
             HugValue::String(ref v) => fmt::Debug::fmt(v, f),
             HugValue::Function(ref v) => write!(f, "<Function {v:?}>"),
             HugValue::Module(ref v) => write!(f, "<Module {v:?}>"),
+            HugValue::Void => write!(f, "<Void>"),
         }
     }
 

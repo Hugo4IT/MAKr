@@ -1,6 +1,6 @@
 use std::{fs::OpenOptions, io::Read};
 
-use hug_ast::HugTree;
+use hug_ast::{Expression, HugTree};
 use hug_core::HUG_CORE_SCRIPT;
 use hug_lexer::{parser::generate_pairs, tokenizer::Tokenizer};
 use hug_lib::{
@@ -64,7 +64,7 @@ impl HugVM {
 
     pub fn load_script(&mut self, program: &str) {
         #[cfg(debug_assertions)]
-        println!("Loading script:\n> {}", program);
+        println!("Loading script:\n{}", program);
 
         let mut tokenizer = Tokenizer::new(&mut self.idents, program);
         let tokens = tokenizer.tokenize();
@@ -72,6 +72,36 @@ impl HugVM {
         let pairs = generate_pairs(program, tokens);
         let t = HugTree::from_token_pairs(pairs);
         self.tree.merge_with(t);
+    }
+
+    pub fn evaluate(&mut self, expression: &Expression) -> HugValue {
+        match expression {
+            Expression::Literal(value) => value.to_owned(),
+            Expression::Call { function, args } => {
+                match self.variables.get(*function).cloned().unwrap() {
+                    HugValue::Function(f) => match f {
+                        HugFunction::Hug { address } => {
+                            self.pointer = address;
+                            println!("No return value supported yet");
+
+                            HugValue::Int32(0)
+                        }
+                        HugFunction::External { function_pointer } => {
+                            let args = args
+                                .iter()
+                                .map(|a| Some(self.evaluate(a)))
+                                .collect::<Vec<_>>();
+
+                            let return_value = unsafe { function_pointer(PackedArgs::pack(&args)) };
+
+                            return_value.unpack()
+                        }
+                    },
+                    _ => panic!("Not a function! {:?}", function),
+                }
+            }
+            Expression::Variable(variable) => self.variables.get(*variable).cloned().unwrap(),
+        }
     }
 
     pub fn run(&mut self) {
@@ -105,35 +135,15 @@ impl HugVM {
                         _ => panic!("Invalid import."),
                     }
                 }
-                hug_ast::HugTreeEntry::VariableDefinition { variable, value } => {
-                    self.variables.set(variable, value.clone());
+                hug_ast::HugTreeEntry::VariableDefinition {
+                    variable,
+                    ref value,
+                } => {
+                    let value = self.evaluate(value);
+                    self.variables.set(variable, value);
                 }
-                hug_ast::HugTreeEntry::FunctionCall { function, args } => {
-                    match self.variables.get(function).unwrap() {
-                        HugValue::Function(f) => match f {
-                            HugFunction::Hug { address } => self.pointer = *address,
-                            HugFunction::External { function_pointer } => {
-                                let args = args
-                                    .iter()
-                                    .map(|a| {
-                                        Some(match a {
-                                            hug_ast::HugTreeFunctionCallArg::Variable(v) => {
-                                                self.variables.get(*v).unwrap().to_owned()
-                                            }
-                                            hug_ast::HugTreeFunctionCallArg::Value(v) => {
-                                                v.to_owned()
-                                            }
-                                        })
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                unsafe {
-                                    function_pointer(PackedArgs::pack(&args));
-                                }
-                            }
-                        },
-                        _ => panic!("Not a function! {:?}", function),
-                    }
+                hug_ast::HugTreeEntry::Expression(ref expression) => {
+                    self.evaluate(expression);
                 }
                 _ => (),
             }

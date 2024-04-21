@@ -7,34 +7,23 @@ use parser::HugTreeParser;
 pub mod parser;
 
 #[derive(Debug, Clone)]
-pub enum HugTreeFunctionCallArg {
-    Variable(Ident),
-    Value(HugValue),
+pub enum HugTreeEntry {
+    ModuleDefinition { module: Ident },
+    ExternalTypeDefinition { _type: Ident },
+    ExternalModuleDefinition { module: Ident, location: String },
+    VariableDefinition { variable: Ident, value: Expression },
+    Expression(Expression),
+    Import { path: Vec<Ident> },
 }
 
 #[derive(Debug, Clone)]
-pub enum HugTreeEntry {
-    ModuleDefinition {
-        module: Ident,
-    },
-    ExternalTypeDefinition {
-        _type: Ident,
-    },
-    ExternalModuleDefinition {
-        module: Ident,
-        location: String,
-    },
-    VariableDefinition {
-        variable: Ident,
-        value: HugValue,
-    },
-    FunctionCall {
+pub enum Expression {
+    Literal(HugValue),
+    Call {
         function: Ident,
-        args: Vec<HugTreeFunctionCallArg>,
+        args: Vec<Expression>,
     },
-    Import {
-        path: Vec<Ident>,
-    },
+    Variable(Ident),
 }
 
 #[derive(Debug)]

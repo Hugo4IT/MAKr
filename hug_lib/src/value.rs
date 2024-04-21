@@ -30,6 +30,7 @@ pub enum HugValue {
     String(String),
     Function(HugFunction),
     Module(HugModule),
+    Void,
 }
 
 impl Display for HugValue {
@@ -50,6 +51,7 @@ impl Display for HugValue {
             HugValue::String(v) => write!(f, "{}", v),
             HugValue::Function(v) => write!(f, "<Function {:?}>", v),
             HugValue::Module(v) => write!(f, "<Module {:?}>", *v),
+            HugValue::Void => write!(f, "<Void>"),
         }
     }
 }
@@ -152,6 +154,12 @@ impl<'a> FromHugValue<'a> for String {
 impl From<String> for HugValue {
     fn from(value: String) -> Self {
         Self::String(value)
+    }
+}
+
+impl From<()> for HugValue {
+    fn from(value: ()) -> Self {
+        Self::Void
     }
 }
 

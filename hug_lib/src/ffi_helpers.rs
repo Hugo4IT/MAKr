@@ -71,11 +71,22 @@ impl<'a> Args<'a> {
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct ReturnValue {
-    pub num_values: usize,
+    pub values_len: usize,
+    pub values: *mut HugValue,
 }
 
 impl ReturnValue {
-    pub fn pack<T>(value: T) -> Self {
-        Self { num_values: 0 }
+    pub fn pack<T>(value: T) -> Self
+    where
+        T: Into<HugValue>,
+    {
+        Self {
+            values_len: 1,
+            values: Box::into_raw(Box::new(value.into())),
+        }
+    }
+
+    pub fn unpack(self) -> HugValue {
+        unsafe { *Box::from_raw(self.values) }
     }
 }

@@ -6,17 +6,7 @@ print("This is a number: {}", num)
 let number_1 = 32
 let number_2 = 50
 
-let result = 82 //add(number_1, number_2)
-
-print("{} + {} = {}", number_1, number_2, result)
+print("{} + {} = {}", number_1, number_2, add(number_1, number_2))
 
 
-
-//let wow, hi = (30, 20)
-
-	//import std.io;
-
-	//fn ui(preon: Preon) {
-	//	preon.label("Hello, World!")
-	//	preon.beginRow()
-	//}
+print("15 + 43 + 18 + 78 + 10 = {}", sum(15, 43, 18, 78, 10))
