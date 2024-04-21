@@ -24,9 +24,6 @@ pub enum HugTreeEntry {
         module: Ident,
         location: String,
     },
-    ExternalFunctionDefinition {
-        function: Ident,
-    },
     VariableDefinition {
         variable: Ident,
         value: HugValue,

@@ -208,13 +208,7 @@ impl HugTreeParser {
         match kind {
             // KeywordKind::Enum => todo!(),
             KeywordKind::Function => {
-                if self.annotation_state.is_extern {
-                    Some(HugTreeEntry::ExternalFunctionDefinition {
-                        function: self.next().unwrap().token.kind.expect_ident().unwrap(),
-                    })
-                } else {
-                    todo!()
-                }
+                todo!()
             }
             KeywordKind::Let => Some(self.variable_definition()),
             KeywordKind::Module => {
