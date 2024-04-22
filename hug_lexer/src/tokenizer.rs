@@ -34,6 +34,7 @@ pub enum TokenKind {
     OpenBracket,      //  [
     CloseBracket,     //  ]
     Colon,            //  :
+    Arrow,            //  ->
 
     // Operators
     Assign,         //  =
@@ -103,10 +104,10 @@ pub enum AnnotationKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeywordKind {
     Enum,
-    Function,
+    Fn,
+    Return,
     Let,
     Module,
-    Private,
     Public,
     Type,
     Use,
@@ -332,7 +333,7 @@ impl<'a> Tokenizer<'a> {
         let kind = match buffer.as_ref() {
             "extern" => AnnotationKind::Extern,
             other => {
-                if other.len() == 0 {
+                if other.is_empty() {
                     return TokenKind::Unknown;
                 }
 
@@ -413,10 +414,10 @@ impl<'a> Tokenizer<'a> {
 
         match buffer.as_str() {
             "enum" => TokenKind::Keyword(KeywordKind::Enum),
-            "function" => TokenKind::Keyword(KeywordKind::Function),
+            "fn" => TokenKind::Keyword(KeywordKind::Fn),
+            "return" => TokenKind::Keyword(KeywordKind::Return),
             "let" => TokenKind::Keyword(KeywordKind::Let),
             "module" => TokenKind::Keyword(KeywordKind::Module),
-            "private" => TokenKind::Keyword(KeywordKind::Private),
             "public" => TokenKind::Keyword(KeywordKind::Public),
             "type" => TokenKind::Keyword(KeywordKind::Type),
             "use" => TokenKind::Keyword(KeywordKind::Use),
@@ -436,7 +437,7 @@ impl<'a> Tokenizer<'a> {
             "Float64" => TokenKind::BuiltInType(TypeKind::Float64),
             "String" => TokenKind::BuiltInType(TypeKind::String),
             other => {
-                if other.len() == 0 {
+                if other.is_empty() {
                     return TokenKind::Unknown;
                 }
 
@@ -491,6 +492,12 @@ impl<'a> Tokenizer<'a> {
             '[' => TokenKind::OpenBracket,
             ']' => TokenKind::CloseBracket,
             ':' => TokenKind::Colon,
+
+            '-' if self.peek_next() == '>' => {
+                self.next().unwrap();
+
+                TokenKind::Arrow
+            }
 
             // Common operators
             // +, +=

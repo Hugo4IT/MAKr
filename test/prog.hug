@@ -1,3 +1,7 @@
+fn make_double(number: Int32) -> Int32 {
+    return add(number, number)
+}
+
 let num: Float32 = 4.20
 
 print("This is a number: {}", num)

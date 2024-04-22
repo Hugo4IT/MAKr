@@ -26,6 +26,22 @@ pub enum Expression {
     Variable(Ident),
 }
 
+impl Expression {
+    pub fn is_constant(&self) -> bool {
+        match self {
+            Self::Literal(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_constant_value(self) -> Option<HugValue> {
+        match self {
+            Self::Literal(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct HugTree {
     pub entries: Vec<HugTreeEntry>,

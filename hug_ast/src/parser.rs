@@ -5,7 +5,7 @@ use hug_lexer::{
     tokenizer::{AnnotationKind, KeywordKind, LiteralKind, TokenKind, TypeKind},
     FilterUseless,
 };
-use hug_lib::{value::HugValue, Ident};
+use hug_lib::{function::HugFunctionArgument, value::HugValue, Ident};
 
 use crate::{Expression, HugTree, HugTreeEntry};
 
@@ -158,6 +158,10 @@ impl HugTreeParser {
         self.pairs.clone().next()
     }
 
+    pub fn peek_next_is(&self, kind: TokenKind) -> bool {
+        self.peek_next().is_some_and(|t| t.token.kind == kind)
+    }
+
     pub fn annotation(&mut self, kind: AnnotationKind) -> Option<HugTreeEntry> {
         self.next().unwrap();
 
@@ -207,13 +211,89 @@ impl HugTreeParser {
         self.next_entry() // An annotation isn't an AST entry by itself, it supports the following entry
     }
 
+    pub fn parse_argument_list(&mut self) -> Vec<HugFunctionArgument> {
+        self.next()
+            .unwrap()
+            .token
+            .kind
+            .expect_kind(TokenKind::OpenParenthesis)
+            .expect("Expected (");
+
+        if self
+            .peek_next()
+            .is_some_and(|t| matches!(t.token.kind, TokenKind::CloseParenthesis))
+        {
+            self.next().unwrap();
+
+            return Vec::with_capacity(0);
+        }
+
+        let mut arguments = Vec::new();
+
+        while !matches!(
+            self.peek_next().unwrap().token.kind,
+            TokenKind::CloseParenthesis,
+        ) {
+            let ident = self
+                .next()
+                .unwrap()
+                .token
+                .kind
+                .expect_ident()
+                .expect("Expected identifier");
+
+            let default_value = if self.peek_next_is(TokenKind::Assign) {
+                self.next().unwrap();
+
+                let expression = self.expression();
+
+                if !expression.is_constant() {
+                    panic!("Invalid default value for argument, must be constant");
+                }
+
+                expression.get_constant_value()
+            } else {
+                None
+            };
+
+            arguments.push(HugFunctionArgument {
+                ident,
+                default_value,
+            });
+
+            match self.peek_next().unwrap().token.kind {
+                TokenKind::Comma => {
+                    self.next().unwrap();
+                }
+                TokenKind::CloseParenthesis => (),
+                _ => {
+                    panic!("Syntax error.");
+                }
+            }
+        }
+
+        self.next().unwrap();
+
+        arguments
+    }
+
     pub fn keyword(&mut self, kind: KeywordKind) -> Option<HugTreeEntry> {
         self.next().unwrap();
 
         match kind {
             // KeywordKind::Enum => todo!(),
-            KeywordKind::Function => {
-                todo!()
+            KeywordKind::Fn => {
+                let ident = self
+                    .next()
+                    .unwrap()
+                    .token
+                    .kind
+                    .expect_ident()
+                    .expect("Expected identifier");
+
+                let arguments = self.parse_argument_list();
+
+                Some()
             }
             KeywordKind::Let => Some(self.variable_definition()),
             KeywordKind::Module => {

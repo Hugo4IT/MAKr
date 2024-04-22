@@ -80,7 +80,7 @@ impl HugVM {
             Expression::Call { function, args } => {
                 match self.variables.get(*function).cloned().unwrap() {
                     HugValue::Function(f) => match f {
-                        HugFunction::Hug { address } => {
+                        HugFunction::Hug { address, arguments } => {
                             self.pointer = address;
                             println!("No return value supported yet");
 
