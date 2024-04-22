@@ -153,6 +153,8 @@ impl HugVM {
             self.run_instruction(instruction);
         }
 
+        self.pointer = 0;
+
         while self.pointer < self.tree.entries.len() {
             let instruction = self.tree.entries.get(self.pointer).unwrap().clone();
 
