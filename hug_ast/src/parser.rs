@@ -299,11 +299,25 @@ impl HugTreeParser {
 
                 let arguments = self.parse_argument_list();
 
+                if self.peek_next_is(TokenKind::Arrow) {
+                    self.next().unwrap();
+
+                    let return_type = self
+                        .next()
+                        .unwrap()
+                        .token
+                        .kind
+                        .expect_type()
+                        .expect("Expected type");
+                }
+
+                //TODO: Parse function body
+
                 self.tree
                     .on_load
                     .push(HugTreeEntry::FunctionDefinition { ident, arguments });
 
-                None
+                self.next_entry()
             }
             KeywordKind::Let => Some(self.variable_definition()),
             KeywordKind::Module => {
@@ -504,12 +518,13 @@ impl HugTreeParser {
 
     pub fn parse(mut self) -> HugTree {
         self.annotation_state.reset();
-        while self.pairs.as_slice().len() > 0 {
+        while !self.pairs.as_slice().is_empty() {
             self.annotation_state.reset();
+
             if let Some(entry) = self.next_entry() {
                 self.tree.entries.push(entry);
             } else {
-                break;
+                panic!("Invalid entry");
             }
         }
 
