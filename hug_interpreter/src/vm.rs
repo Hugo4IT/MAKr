@@ -1,6 +1,6 @@
 use std::{fs::OpenOptions, io::Read};
 
-use hug_ast::{Expression, HugTree};
+use hug_ast::{Expression, HugTree, HugTreeEntry};
 use hug_core::HUG_CORE_SCRIPT;
 use hug_lexer::{parser::generate_pairs, tokenizer::Tokenizer};
 use hug_lib::{
@@ -104,49 +104,60 @@ impl HugVM {
         }
     }
 
+    pub fn run_instruction(&mut self, instruction: HugTreeEntry) {
+        #[cfg(debug_assertions)]
+        println!("Instruction: {:?}", instruction);
+
+        match instruction {
+            hug_ast::HugTreeEntry::ModuleDefinition { module } => todo!(),
+            hug_ast::HugTreeEntry::ExternalModuleDefinition {
+                module,
+                ref location,
+            } => {
+                self.variables
+                    .set(module, HugValue::Module(HugModule::external(location)));
+            }
+            hug_ast::HugTreeEntry::Import { path } => {
+                if path.len() <= 1 {
+                    panic!("Invalid import.");
+                }
+
+                match self.variables.get_mut(path[0]) {
+                    Some(HugValue::Module(module)) => {
+                        let ident = path.last().cloned().unwrap();
+                        let variable = module.import(&self.idents, &path[1..]);
+
+                        self.variables.set(ident, variable);
+                    }
+                    _ => panic!("Invalid import."),
+                }
+            }
+            hug_ast::HugTreeEntry::VariableDefinition {
+                variable,
+                ref value,
+            } => {
+                let value = self.evaluate(value);
+                self.variables.set(variable, value);
+            }
+            hug_ast::HugTreeEntry::Expression(ref expression) => {
+                self.evaluate(expression);
+            }
+            _ => (),
+        }
+    }
+
     pub fn run(&mut self) {
+        let on_load = self.tree.on_load.drain(..).collect::<Vec<_>>();
+
+        for instruction in on_load {
+            self.run_instruction(instruction);
+        }
+
         while self.pointer < self.tree.entries.len() {
             let instruction = self.tree.entries.get(self.pointer).unwrap().clone();
 
-            #[cfg(debug_assertions)]
-            println!("Instruction: {:?}", instruction);
+            self.run_instruction(instruction);
 
-            match instruction {
-                hug_ast::HugTreeEntry::ModuleDefinition { module } => todo!(),
-                hug_ast::HugTreeEntry::ExternalModuleDefinition {
-                    module,
-                    ref location,
-                } => {
-                    self.variables
-                        .set(module, HugValue::Module(HugModule::external(location)));
-                }
-                hug_ast::HugTreeEntry::Import { path } => {
-                    if path.len() <= 1 {
-                        panic!("Invalid import.");
-                    }
-
-                    match self.variables.get_mut(path[0]) {
-                        Some(HugValue::Module(module)) => {
-                            let ident = path.last().cloned().unwrap();
-                            let variable = module.import(&self.idents, &path[1..]);
-
-                            self.variables.set(ident, variable);
-                        }
-                        _ => panic!("Invalid import."),
-                    }
-                }
-                hug_ast::HugTreeEntry::VariableDefinition {
-                    variable,
-                    ref value,
-                } => {
-                    let value = self.evaluate(value);
-                    self.variables.set(variable, value);
-                }
-                hug_ast::HugTreeEntry::Expression(ref expression) => {
-                    self.evaluate(expression);
-                }
-                _ => (),
-            }
             self.next();
         }
     }

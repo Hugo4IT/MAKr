@@ -144,9 +144,7 @@ impl HugTreeParser {
         HugTreeParser {
             annotation_state: HugTreeAnnotationState::new(),
             pairs: pairs.filter_useless().into_iter(),
-            tree: HugTree {
-                entries: Vec::new(),
-            },
+            tree: HugTree::new(),
         }
     }
 
@@ -154,7 +152,7 @@ impl HugTreeParser {
         self.pairs.next()
     }
 
-    pub fn peek_next(&mut self) -> Option<TokenPair> {
+    pub fn peek_next(&self) -> Option<TokenPair> {
         self.pairs.clone().next()
     }
 
@@ -242,6 +240,14 @@ impl HugTreeParser {
                 .expect_ident()
                 .expect("Expected identifier");
 
+            let _type = if self.peek_next_is(TokenKind::Colon) {
+                self.next().unwrap();
+
+                Some(self.next().unwrap().token.kind.expect_type().unwrap())
+            } else {
+                None
+            };
+
             let default_value = if self.peek_next_is(TokenKind::Assign) {
                 self.next().unwrap();
 
@@ -293,7 +299,11 @@ impl HugTreeParser {
 
                 let arguments = self.parse_argument_list();
 
-                Some()
+                self.tree
+                    .on_load
+                    .push(HugTreeEntry::FunctionDefinition { ident, arguments });
+
+                None
             }
             KeywordKind::Let => Some(self.variable_definition()),
             KeywordKind::Module => {

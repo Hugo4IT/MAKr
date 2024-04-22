@@ -1,4 +1,4 @@
-fn make_double(number: Int32) -> Int32 {
+fn make_double(number: Int32 = 0) -> Int32 {
     return add(number, number)
 }
 
