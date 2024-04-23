@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+hug_il = { path = "../hug_il" }
 hug_lib = { path = "../hug_lib" }
 hug_ast = { path = "../hug_ast" }
 hug_core = { path = "../hug_core" }

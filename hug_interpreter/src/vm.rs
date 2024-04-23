@@ -4,15 +4,9 @@ use hug_ast::{Expression, HugTree, HugTreeEntry};
 use hug_core::HUG_CORE_SCRIPT;
 use hug_lexer::{parser::generate_pairs, tokenizer::Tokenizer};
 use hug_lib::{
-    ffi_helpers::PackedArgs,
-    function::HugFunction,
-    ident_table::IdentTable,
-    module::HugModule,
-    value::{HugExternalFunction, HugValue},
-    variables::Variables,
+    ffi_helpers::PackedArgs, function::HugFunction, ident_table::IdentTable, module::HugModule,
+    value::HugValue, variables::Variables,
 };
-
-const INVALID_MODULE_ERROR: &str = "This module does not have the required functions, add one with hug_module! or contact the module's developer.";
 
 #[derive(Debug)]
 pub struct HugVM {

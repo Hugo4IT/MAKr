@@ -108,11 +108,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hug_il"
+version = "0.1.0"
+
+[[package]]
 name = "hug_interpreter"
 version = "0.1.0"
 dependencies = [
  "hug_ast",
  "hug_core",
+ "hug_il",
  "hug_lexer",
  "hug_lib",
  "libloading",

@@ -6,5 +6,7 @@ members = [
     "hug_core",
     "hug_ast",
     "hug_lib",
-    "hug_bin"
+    "hug_bin",
+    "hug_il",
+    "hug_il",
 ]
