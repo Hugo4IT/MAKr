@@ -8,6 +8,8 @@ use hug_lib::{
     value::HugValue, variables::Variables,
 };
 
+use crate::stack::Stack;
+
 #[derive(Debug)]
 pub struct HugVM {
     paused: bool,
@@ -15,6 +17,7 @@ pub struct HugVM {
     tree: HugTree,
     idents: IdentTable,
     variables: Variables,
+    stack: Stack<4096>,
     // external_libraries: Vec<Library>,
     // external_functions: Vec<Symbol<'lib>>,
 }
@@ -27,6 +30,7 @@ impl HugVM {
             tree: HugTree::new(),
             idents: IdentTable::new(),
             variables: Variables::new(),
+            stack: Stack::new(),
         };
 
         vm.load_script(HUG_CORE_SCRIPT);

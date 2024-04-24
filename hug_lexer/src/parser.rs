@@ -1,6 +1,6 @@
 use hug_lib::value::HugValue;
 
-use crate::tokenizer::Token;
+use crate::tokenizer::{Token, TokenKind};
 
 #[derive(Debug, Clone)]
 pub struct TokenPair {
@@ -9,6 +9,16 @@ pub struct TokenPair {
 }
 
 impl TokenPair {
+    pub const fn null() -> Self {
+        Self {
+            text: String::new(),
+            token: Token {
+                len: 0,
+                kind: TokenKind::Unknown,
+            },
+        }
+    }
+
     pub fn parse_literal(&self) -> Option<HugValue> {
         if let Some(_) = self.token.kind.expect_literal() {
             if let Ok(int) = self.text.parse::<i32>() {

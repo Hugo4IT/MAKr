@@ -19,62 +19,62 @@ impl TypedDefinition for HugValue {
             TypeKind::Int8 => HugValue::from(
                 value
                     .parse::<i8>()
-                    .expect(&format!("Cannot parse Int8 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Int8 from {}", value)),
             ),
             TypeKind::Int16 => HugValue::from(
                 value
                     .parse::<i16>()
-                    .expect(&format!("Cannot parse Int16 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Int16 from {}", value)),
             ),
             TypeKind::Int32 => HugValue::from(
                 value
                     .parse::<i32>()
-                    .expect(&format!("Cannot parse Int32 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Int32 from {}", value)),
             ),
             TypeKind::Int64 => HugValue::from(
                 value
                     .parse::<i64>()
-                    .expect(&format!("Cannot parse Int64 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Int64 from {}", value)),
             ),
             TypeKind::Int128 => HugValue::from(
                 value
                     .parse::<i128>()
-                    .expect(&format!("Cannot parse Int128 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Int128 from {}", value)),
             ),
             TypeKind::UInt8 => HugValue::from(
                 value
                     .parse::<u8>()
-                    .expect(&format!("Cannot parse UInt8 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse UInt8 from {}", value)),
             ),
             TypeKind::UInt16 => HugValue::from(
                 value
                     .parse::<u16>()
-                    .expect(&format!("Cannot parse UInt16 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse UInt16 from {}", value)),
             ),
             TypeKind::UInt32 => HugValue::from(
                 value
                     .parse::<u32>()
-                    .expect(&format!("Cannot parse UInt32 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse UInt32 from {}", value)),
             ),
             TypeKind::UInt64 => HugValue::from(
                 value
                     .parse::<u64>()
-                    .expect(&format!("Cannot parse UInt64 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse UInt64 from {}", value)),
             ),
             TypeKind::UInt128 => HugValue::from(
                 value
                     .parse::<u128>()
-                    .expect(&format!("Cannot parse UInt128 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse UInt128 from {}", value)),
             ),
             TypeKind::Float32 => HugValue::from(
                 value
                     .parse::<f32>()
-                    .expect(&format!("Cannot parse Float32 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Float32 from {}", value)),
             ),
             TypeKind::Float64 => HugValue::from(
                 value
                     .parse::<f64>()
-                    .expect(&format!("Cannot parse Float64 from {}", value)),
+                    .unwrap_or_else(|_| panic!("Cannot parse Float64 from {}", value)),
             ),
             TypeKind::String => HugValue::from(value[1..(value.len() - 1)].to_string()),
             TypeKind::Other(_) => todo!(),
@@ -148,45 +148,46 @@ impl HugTreeParser {
         }
     }
 
-    pub fn next(&mut self) -> Option<TokenPair> {
-        self.pairs.next()
+    pub fn next(&mut self) -> TokenPair {
+        self.pairs.next().unwrap_or_else(TokenPair::null)
     }
 
-    pub fn peek_next(&self) -> Option<TokenPair> {
-        self.pairs.clone().next()
+    pub fn peek_next(&self) -> TokenPair {
+        self.pairs.clone().next().unwrap_or_else(TokenPair::null)
     }
 
     pub fn peek_next_is(&self, kind: TokenKind) -> bool {
-        self.peek_next().is_some_and(|t| t.token.kind == kind)
+        self.peek_next().token.kind == kind
     }
 
-    pub fn annotation(&mut self, kind: AnnotationKind) -> Option<HugTreeEntry> {
-        self.next().unwrap();
+    pub fn annotation(&mut self, kind: AnnotationKind) -> bool {
+        self.next();
 
         let mut vars: HashMap<String, (LiteralKind, String)> = HashMap::new();
 
-        if self.peek_next().unwrap().token.kind == TokenKind::OpenParenthesis {
+        if self.peek_next_is(TokenKind::OpenParenthesis) {
             self.next(); // (
 
             loop {
-                self.peek_next().unwrap().token.kind.expect_ident().unwrap();
-                let name = self.next().unwrap().text;
+                let name_pair = self.next();
+                name_pair.token.kind.expect_ident().unwrap();
+
+                let name = name_pair.text;
 
                 self.next()
-                    .unwrap()
                     .token
                     .kind
                     .expect_kind(TokenKind::Assign)
                     .unwrap();
 
-                let value_pair = self.next().unwrap();
+                let value_pair = self.next();
                 let value_kind = value_pair.token.kind.expect_literal().unwrap();
                 let value = value_pair.text;
                 let value = value[1..value.len() - 1].to_string();
 
                 vars.insert(name, (value_kind, value));
 
-                if self.next().unwrap().token.kind == TokenKind::CloseParenthesis {
+                if self.next().token.kind == TokenKind::CloseParenthesis {
                     break;
                 }
             }
@@ -206,50 +207,42 @@ impl HugTreeParser {
             }
         }
 
-        self.next_entry() // An annotation isn't an AST entry by itself, it supports the following entry
+        true // An annotation isn't an AST entry by itself, it supports the following entry
     }
 
     pub fn parse_argument_list(&mut self) -> Vec<HugFunctionArgument> {
         self.next()
-            .unwrap()
             .token
             .kind
             .expect_kind(TokenKind::OpenParenthesis)
             .expect("Expected (");
 
-        if self
-            .peek_next()
-            .is_some_and(|t| matches!(t.token.kind, TokenKind::CloseParenthesis))
-        {
-            self.next().unwrap();
+        if self.peek_next_is(TokenKind::CloseParenthesis) {
+            self.next();
 
             return Vec::with_capacity(0);
         }
 
         let mut arguments = Vec::new();
 
-        while !matches!(
-            self.peek_next().unwrap().token.kind,
-            TokenKind::CloseParenthesis,
-        ) {
+        while !self.peek_next_is(TokenKind::CloseParenthesis) {
             let ident = self
                 .next()
-                .unwrap()
                 .token
                 .kind
                 .expect_ident()
                 .expect("Expected identifier");
 
             let _type = if self.peek_next_is(TokenKind::Colon) {
-                self.next().unwrap();
+                self.next();
 
-                Some(self.next().unwrap().token.kind.expect_type().unwrap())
+                Some(self.next().token.kind.expect_type().unwrap())
             } else {
                 None
             };
 
             let default_value = if self.peek_next_is(TokenKind::Assign) {
-                self.next().unwrap();
+                self.next();
 
                 let expression = self.expression();
 
@@ -267,9 +260,9 @@ impl HugTreeParser {
                 default_value,
             });
 
-            match self.peek_next().unwrap().token.kind {
+            match self.peek_next().token.kind {
                 TokenKind::Comma => {
-                    self.next().unwrap();
+                    self.next();
                 }
                 TokenKind::CloseParenthesis => (),
                 _ => {
@@ -278,20 +271,19 @@ impl HugTreeParser {
             }
         }
 
-        self.next().unwrap();
+        self.next();
 
         arguments
     }
 
-    pub fn keyword(&mut self, kind: KeywordKind) -> Option<HugTreeEntry> {
-        self.next().unwrap();
+    pub fn keyword(&mut self, kind: KeywordKind) -> bool {
+        self.next();
 
         match kind {
             // KeywordKind::Enum => todo!(),
             KeywordKind::Fn => {
                 let ident = self
                     .next()
-                    .unwrap()
                     .token
                     .kind
                     .expect_ident()
@@ -300,15 +292,9 @@ impl HugTreeParser {
                 let arguments = self.parse_argument_list();
 
                 if self.peek_next_is(TokenKind::Arrow) {
-                    self.next().unwrap();
+                    self.next();
 
-                    let return_type = self
-                        .next()
-                        .unwrap()
-                        .token
-                        .kind
-                        .expect_type()
-                        .expect("Expected type");
+                    let return_type = self.next().token.kind.expect_type().expect("Expected type");
                 }
 
                 //TODO: Parse function body
@@ -317,15 +303,18 @@ impl HugTreeParser {
                     .on_load
                     .push(HugTreeEntry::FunctionDefinition { ident, arguments });
 
-                self.next_entry()
+                true
             }
-            KeywordKind::Let => Some(self.variable_definition()),
+            KeywordKind::Let => self.variable_definition(),
             KeywordKind::Module => {
                 if let Some(location) = self.annotation_state.get_extern() {
-                    Some(HugTreeEntry::ExternalModuleDefinition {
-                        location,
-                        module: self.next().unwrap().token.kind.expect_ident().unwrap(),
-                    })
+                    let module = self.next().token.kind.expect_ident().unwrap();
+
+                    self.tree
+                        .entries
+                        .push(HugTreeEntry::ExternalModuleDefinition { location, module });
+
+                    true
                 } else {
                     todo!() // TODO: Non-@extern modules not implemented yet.
                 }
@@ -334,63 +323,75 @@ impl HugTreeParser {
             // TODO: KeywordKind::Public => todo!(),
             KeywordKind::Type => {
                 if self.annotation_state.is_extern {
-                    Some(HugTreeEntry::ExternalTypeDefinition {
-                        _type: self.next().unwrap().token.kind.expect_ident().unwrap(),
-                    })
+                    let _type = self.next().token.kind.expect_ident().unwrap();
+
+                    self.tree
+                        .entries
+                        .push(HugTreeEntry::ExternalTypeDefinition { _type });
+
+                    true
                 } else {
                     todo!() // TODO: Write non-extern type
                 }
             }
             KeywordKind::Use => {
                 let mut path = Vec::new();
-                path.push(self.next().unwrap().token.kind.expect_ident().unwrap());
+                path.push(self.next().token.kind.expect_ident().unwrap());
 
-                while self
-                    .peek_next()
-                    .is_some_and(|t| matches!(t.token.kind, TokenKind::Dot))
-                {
-                    self.next().unwrap(); // .
+                while self.peek_next_is(TokenKind::Dot) {
+                    self.next(); // .
 
-                    path.push(self.next().unwrap().token.kind.expect_ident().unwrap());
+                    path.push(self.next().token.kind.expect_ident().unwrap());
                 }
 
-                Some(HugTreeEntry::Import { path })
+                self.tree.entries.push(HugTreeEntry::Import { path });
+
+                true
             }
-            _ => None,
+            _ => false,
         }
     }
 
-    pub fn identifier(&mut self, id: Ident) -> HugTreeEntry {
-        let next = self.peek_next().unwrap();
+    pub fn identifier(&mut self, _id: Ident) -> bool {
+        let next = self.peek_next();
+
         match next.token.kind {
             TokenKind::Assign => {
                 // TODO: Assigning values to existing variables
                 todo!()
             }
-            _ => HugTreeEntry::Expression(self.expression()),
+            _ => {
+                let expression = self.expression();
+
+                self.tree.entries.push(HugTreeEntry::Expression(expression));
+
+                true
+            }
         }
     }
 
-    pub fn variable_definition(&mut self) -> HugTreeEntry {
-        let name = self.next().unwrap();
+    pub fn variable_definition(&mut self) -> bool {
+        let name = self.next();
         let name = name.token.kind.expect_ident().unwrap();
 
-        let next = self.next().unwrap();
+        let next = self.next();
+
         match next.token.kind {
             TokenKind::Assign => {
                 let value = self.expression();
 
-                HugTreeEntry::VariableDefinition {
+                self.tree.entries.push(HugTreeEntry::VariableDefinition {
                     variable: name,
                     value,
-                }
+                });
+
+                true
             }
             TokenKind::Colon => {
-                let _type = self.next().unwrap();
+                let _type = self.next();
                 let _type = _type.token.kind.expect_type().unwrap();
 
                 self.next()
-                    .unwrap()
                     .token
                     .kind
                     .expect_kind(TokenKind::Assign)
@@ -400,42 +401,39 @@ impl HugTreeParser {
 
                 // let value = self.next().unwrap().text;
                 // let value = HugValue::parse_from_type(_type, value);
-                HugTreeEntry::VariableDefinition {
+                self.tree.entries.push(HugTreeEntry::VariableDefinition {
                     variable: name,
                     value,
-                }
+                });
+
+                true
             }
             _ => panic!("Unexpected token at variable definition: {:?}", next),
         }
     }
 
     pub fn expression(&mut self) -> Expression {
-        match self.peek_next().unwrap().token.kind {
-            TokenKind::Literal(literal) => {
-                Expression::Literal(self.next().unwrap().parse_literal().unwrap())
-            }
+        match self.peek_next().token.kind {
+            TokenKind::Literal(_) => Expression::Literal(self.next().parse_literal().unwrap()),
             TokenKind::Identifier(ident) => {
-                self.next().unwrap();
+                self.next();
 
-                match self.peek_next().unwrap().token.kind {
+                match self.peek_next().token.kind {
                     TokenKind::Dot => {
                         // TODO: Accessing fields
                         todo!()
                     }
                     TokenKind::OpenParenthesis => {
-                        self.next().unwrap();
+                        self.next();
 
                         let mut args = Vec::new();
 
-                        while !matches!(
-                            self.peek_next().unwrap().token.kind,
-                            TokenKind::CloseParenthesis
-                        ) {
+                        while !matches!(self.peek_next().token.kind, TokenKind::CloseParenthesis) {
                             args.push(self.expression());
 
-                            match self.peek_next().unwrap().token.kind {
+                            match self.peek_next().token.kind {
                                 TokenKind::Comma => {
-                                    self.next().unwrap();
+                                    self.next();
                                 }
                                 TokenKind::CloseParenthesis => (),
                                 _ => {
@@ -444,7 +442,7 @@ impl HugTreeParser {
                             }
                         }
 
-                        self.next().unwrap();
+                        self.next();
 
                         Expression::Call {
                             function: ident,
@@ -458,73 +456,72 @@ impl HugTreeParser {
         }
     }
 
-    pub fn next_entry(&mut self) -> Option<HugTreeEntry> {
-        if let Some(pair) = self.peek_next() {
-            match pair.token.kind {
-                // TokenKind::Literal(_) => todo!(),
-                TokenKind::Keyword(kind) => self.keyword(kind),
-                TokenKind::Identifier(id) => Some(self.identifier(id)),
-                TokenKind::Annotation(kind) => self.annotation(kind),
-                // TokenKind::Dot => todo!(),
-                // TokenKind::OpenParenthesis => todo!(),
-                // TokenKind::CloseParenthesis => todo!(),
-                // TokenKind::OpenBrace => todo!(),
-                // TokenKind::CloseBrace => todo!(),
-                // TokenKind::OpenBracket => todo!(),
-                // TokenKind::CloseBracket => todo!(),
-                // TokenKind::Colon => todo!(),
-                // TokenKind::Assign => todo!(),
-                // TokenKind::Add => todo!(),
-                // TokenKind::Subtract => todo!(),
-                // TokenKind::Multiply => todo!(),
-                // TokenKind::Divide => todo!(),
-                // TokenKind::Modulus => todo!(),
-                // TokenKind::AddAssign => todo!(),
-                // TokenKind::SubtractAssign => todo!(),
-                // TokenKind::MultiplyAssign => todo!(),
-                // TokenKind::DivideAssign => todo!(),
-                // TokenKind::ModulusAssign => todo!(),
-                // TokenKind::Not => todo!(),
-                // TokenKind::And => todo!(),
-                // TokenKind::Or => todo!(),
-                // TokenKind::IsEqualTo => todo!(),
-                // TokenKind::IsNotEqualTo => todo!(),
-                // TokenKind::LessThan => todo!(),
-                // TokenKind::GreaterThan => todo!(),
-                // TokenKind::LessThanOrEquals => todo!(),
-                // TokenKind::GreaterThanOrEquals => todo!(),
-                // TokenKind::BinaryAnd => todo!(),
-                // TokenKind::BinaryOr => todo!(),
-                // TokenKind::BinaryNot => todo!(),
-                // TokenKind::BinaryXOr => todo!(),
-                // TokenKind::BinaryAndAssign => todo!(),
-                // TokenKind::BinaryOrAssign => todo!(),
-                // TokenKind::BinaryNotAssign => todo!(),
-                // TokenKind::BinaryXOrAssign => todo!(),
-                // TokenKind::ShiftLeft => todo!(),
-                // TokenKind::ShiftRight => todo!(),
-                // TokenKind::ShiftLeftOverflow => todo!(),
-                // TokenKind::ShiftRightOverflow => todo!(),
-                TokenKind::Unknown => panic!("Unknown token: {}!", pair.text),
-                _ => {
-                    self.next().unwrap();
-                    self.next_entry()
-                } // _ => unreachable!(),
+    pub fn visit_next_pair(&mut self) -> bool {
+        let pair = self.peek_next();
+
+        match pair.token.kind {
+            // TokenKind::Literal(_) => todo!(),
+            TokenKind::Keyword(kind) => self.keyword(kind),
+            TokenKind::Identifier(id) => self.identifier(id),
+            TokenKind::Annotation(kind) => self.annotation(kind),
+            // TokenKind::Dot => todo!(),
+            // TokenKind::OpenParenthesis => todo!(),
+            // TokenKind::CloseParenthesis => todo!(),
+            // TokenKind::OpenBrace => todo!(),
+            // TokenKind::CloseBrace => todo!(),
+            // TokenKind::OpenBracket => todo!(),
+            // TokenKind::CloseBracket => todo!(),
+            // TokenKind::Colon => todo!(),
+            // TokenKind::Assign => todo!(),
+            // TokenKind::Add => todo!(),
+            // TokenKind::Subtract => todo!(),
+            // TokenKind::Multiply => todo!(),
+            // TokenKind::Divide => todo!(),
+            // TokenKind::Modulus => todo!(),
+            // TokenKind::AddAssign => todo!(),
+            // TokenKind::SubtractAssign => todo!(),
+            // TokenKind::MultiplyAssign => todo!(),
+            // TokenKind::DivideAssign => todo!(),
+            // TokenKind::ModulusAssign => todo!(),
+            // TokenKind::Not => todo!(),
+            // TokenKind::And => todo!(),
+            // TokenKind::Or => todo!(),
+            // TokenKind::IsEqualTo => todo!(),
+            // TokenKind::IsNotEqualTo => todo!(),
+            // TokenKind::LessThan => todo!(),
+            // TokenKind::GreaterThan => todo!(),
+            // TokenKind::LessThanOrEquals => todo!(),
+            // TokenKind::GreaterThanOrEquals => todo!(),
+            // TokenKind::BinaryAnd => todo!(),
+            // TokenKind::BinaryOr => todo!(),
+            // TokenKind::BinaryNot => todo!(),
+            // TokenKind::BinaryXOr => todo!(),
+            // TokenKind::BinaryAndAssign => todo!(),
+            // TokenKind::BinaryOrAssign => todo!(),
+            // TokenKind::BinaryNotAssign => todo!(),
+            // TokenKind::BinaryXOrAssign => todo!(),
+            // TokenKind::ShiftLeft => todo!(),
+            // TokenKind::ShiftRight => todo!(),
+            // TokenKind::ShiftLeftOverflow => todo!(),
+            // TokenKind::ShiftRightOverflow => todo!(),
+            TokenKind::LineComment | TokenKind::BlockComment => {
+                self.next();
+
+                true
             }
-        } else {
-            self.next_entry()
+            TokenKind::Unknown => panic!("Unknown token: {}!", pair.text),
+            _ => false,
         }
     }
 
     pub fn parse(mut self) -> HugTree {
         self.annotation_state.reset();
-        while !self.pairs.as_slice().is_empty() {
-            self.annotation_state.reset();
 
-            if let Some(entry) = self.next_entry() {
-                self.tree.entries.push(entry);
-            } else {
-                panic!("Invalid entry");
+        while !self.pairs.as_slice().is_empty() {
+            let success = self.visit_next_pair();
+
+            if !success {
+                panic!("Syntax error");
             }
         }
 
