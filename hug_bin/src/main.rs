@@ -36,7 +36,7 @@ fn main() {
             let mut file = OpenOptions::new()
                 .read(true)
                 .open(file_name)
-                .expect(format!("Could not open file {}!", file_name).as_str());
+                .unwrap_or_else(|_| panic!("Could not open file {}!", file_name));
 
             let mut buffer = String::new();
             file.read_to_string(&mut buffer)

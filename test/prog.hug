@@ -1,6 +1,6 @@
-//fn make_double(number: Int32 = 0) -> Int32 {
-//    return add(number, number)
-//}
+fn make_double(number: Int32 = 0) -> Int32 {
+    return add(number, number)
+}
 
 let num: Float32 = 4.20
 

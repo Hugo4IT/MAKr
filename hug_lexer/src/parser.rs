@@ -3,15 +3,15 @@ use hug_lib::value::HugValue;
 use crate::tokenizer::{Token, TokenKind};
 
 #[derive(Debug, Clone)]
-pub struct TokenPair {
-    pub text: String,
-    pub token: Token,
+pub struct TokenPair<'a> {
+    pub text: &'a str,
+    pub token: Token<'a>,
 }
 
-impl TokenPair {
+impl<'a> TokenPair<'a> {
     pub const fn null() -> Self {
         Self {
-            text: String::new(),
+            text: "",
             token: Token {
                 len: 0,
                 kind: TokenKind::Unknown,
@@ -38,21 +38,21 @@ impl TokenPair {
     }
 }
 
-pub fn generate_pairs(program: &str, tokens: Vec<Token>) -> Vec<TokenPair> {
-    let mut pairs = Vec::new();
+// pub fn generate_pairs<'a>(program: &'a str, tokens: Vec<Token>) -> Vec<TokenPair<'a>> {
+//     let mut pairs = Vec::new();
 
-    let mut chars = program.chars();
-    for token in tokens {
-        let mut buffer = String::new();
-        for _i in 0..token.len {
-            buffer.push(chars.next().unwrap());
-        }
+//     let mut chars = program.chars();
+//     for token in tokens {
+//         let mut buffer = String::new();
+//         for _i in 0..token.len {
+//             buffer.push(chars.next().unwrap());
+//         }
 
-        pairs.push(TokenPair {
-            text: buffer,
-            token,
-        })
-    }
+//         pairs.push(TokenPair {
+//             text: buffer,
+//             token,
+//         })
+//     }
 
-    pairs
-}
+//     pairs
+// }

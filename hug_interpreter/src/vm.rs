@@ -64,7 +64,7 @@ impl HugVM {
         #[cfg(debug_assertions)]
         println!("Loading script:\n{}", program);
 
-        let mut tokenizer = Tokenizer::new(&mut self.idents, program);
+        let mut tokenizer = Tokenizer::new(program);
         let tokens = tokenizer.tokenize();
 
         let pairs = generate_pairs(program, tokens);
@@ -78,7 +78,10 @@ impl HugVM {
             Expression::Call { function, args } => {
                 match self.variables.get(*function).cloned().unwrap() {
                     HugValue::Function(f) => match f {
-                        HugFunction::Hug { address, arguments } => {
+                        HugFunction::Hug {
+                            scope_id: address,
+                            arguments,
+                        } => {
                             self.pointer = address;
                             println!("No return value supported yet");
 

@@ -7,7 +7,7 @@ use hug_lexer::{
 };
 use hug_lib::{function::HugFunctionArgument, value::HugValue, Ident};
 
-use crate::{Expression, HugTree, HugTreeEntry};
+use crate::{scope::HugScope, Expression, HugTree, HugTreeEntry};
 
 pub trait TypedDefinition {
     fn parse_from_type(_type: TypeKind, value: String) -> Self;
@@ -276,7 +276,7 @@ impl HugTreeParser {
         arguments
     }
 
-    pub fn keyword(&mut self, kind: KeywordKind) -> bool {
+    pub fn keyword(&mut self, scope: &mut HugScope, kind: KeywordKind) -> bool {
         self.next();
 
         match kind {
@@ -297,10 +297,12 @@ impl HugTreeParser {
                     let return_type = self.next().token.kind.expect_type().expect("Expected type");
                 }
 
-                //TODO: Parse function body
+                let function_body = self.scope();
 
-                self.tree
-                    .on_load
+                let ident = scope.idents.ident(&ident);
+                scope
+                    .members
+                    .set(ident, HugValue::Function)
                     .push(HugTreeEntry::FunctionDefinition { ident, arguments });
 
                 true
@@ -347,6 +349,9 @@ impl HugTreeParser {
                 self.tree.entries.push(HugTreeEntry::Import { path });
 
                 true
+            }
+            KeywordKind::Return => {
+                self.tree.entries.push(self.expression());
             }
             _ => false,
         }
@@ -456,12 +461,12 @@ impl HugTreeParser {
         }
     }
 
-    pub fn visit_next_pair(&mut self) -> bool {
+    pub fn visit_next_pair(&mut self, scope: &mut HugScope) -> bool {
         let pair = self.peek_next();
 
         match pair.token.kind {
             // TokenKind::Literal(_) => todo!(),
-            TokenKind::Keyword(kind) => self.keyword(kind),
+            TokenKind::Keyword(kind) => self.keyword(scope, kind),
             TokenKind::Identifier(id) => self.identifier(id),
             TokenKind::Annotation(kind) => self.annotation(kind),
             // TokenKind::Dot => todo!(),
@@ -514,15 +519,31 @@ impl HugTreeParser {
         }
     }
 
+    pub fn scope(&mut self) -> HugScope {
+        self.next()
+            .token
+            .kind
+            .expect_kind(TokenKind::OpenBrace)
+            .unwrap(); // {
+
+        let mut scope = HugScope::new();
+
+        while !self.peek_next_is(TokenKind::CloseBrace) {
+            if !self.visit_next_pair(&mut scope) {
+                panic!("Syntax error");
+            }
+        }
+
+        self.next(); // }
+
+        scope
+    }
+
     pub fn parse(mut self) -> HugTree {
         self.annotation_state.reset();
 
         while !self.pairs.as_slice().is_empty() {
-            let success = self.visit_next_pair();
-
-            if !success {
-                panic!("Syntax error");
-            }
+            self.visit_next_pair(&mut self.tree.root);
         }
 
         self.tree

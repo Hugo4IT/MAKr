@@ -1,5 +1,5 @@
 use hug_lib::ident_table::IdentTable;
-use parser::{generate_pairs, TokenPair};
+use parser::TokenPair;
 use tokenizer::{Token, TokenKind, Tokenizer};
 
 pub mod parser;
@@ -9,7 +9,7 @@ pub trait FilterUseless {
     fn filter_useless(self) -> Self;
 }
 
-impl FilterUseless for Vec<TokenPair> {
+impl<'a> FilterUseless for Vec<TokenPair<'a>> {
     fn filter_useless(self) -> Self {
         let mut new_self = Vec::with_capacity(self.capacity());
 
@@ -31,7 +31,8 @@ impl FilterUseless for Vec<TokenPair> {
 pub trait CustomDisplay {
     fn display(&self) -> String;
 }
-impl CustomDisplay for Vec<TokenPair> {
+
+impl<'a> CustomDisplay for Vec<TokenPair<'a>> {
     fn display(&self) -> String {
         let mut buffer = String::new();
         let max_len = self
@@ -61,18 +62,16 @@ impl CustomDisplay for Vec<TokenPair> {
     }
 }
 
-pub fn lex(program: &str) -> Vec<TokenPair> {
-    let tokens = tokenize(program);
-    generate_pairs(program, tokens)
-}
+// pub fn lex(program: &str) -> Vec<TokenPair> {
+//     let tokens = tokenize(program);
+//     generate_pairs(program, tokens)
+// }
 
-pub fn tokenize(program: &str) -> Vec<Token> {
-    let mut ident_table = IdentTable::new();
-
+pub fn tokenize<'a>(program: &'a str) -> Vec<Token<'a>> {
     let mut buffer = String::new();
     buffer.push_str("import core");
 
-    Tokenizer::new(&mut ident_table, program).tokenize()
+    Tokenizer::new(program).tokenize()
 }
 
 pub fn run_test(program: &str, expected_result: &[(TokenKind, usize)]) {

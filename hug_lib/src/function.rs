@@ -6,7 +6,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum HugFunction {
     Hug {
-        address: usize,
+        scope_id: usize,
         arguments: Vec<HugFunctionArgument>,
     },
     External {
