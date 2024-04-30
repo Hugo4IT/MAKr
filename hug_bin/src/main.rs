@@ -42,7 +42,8 @@ fn main() {
             file.read_to_string(&mut buffer)
                 .expect("Could not read file!");
 
-            hug_compiler::compile(buffer);
+            // hug_compiler::compile(buffer);
+            todo!()
         }
         _ => unreachable!(),
     }
